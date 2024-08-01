@@ -2,9 +2,8 @@
 
 ### Contents
 1. [Intro | Setup](#setup)
-2. [WTF is that?](#wtf)
-3. [WTF is that?](#wtf)
-7. [Server Requests](#server_requests)
+2. [Server Requests](#server_requests)
+7. [WTF is that?](#wtf)
 
 <a id="setup"></a>
 
@@ -12,7 +11,36 @@
 
 This course will be mostly hands-on. We will explore some interesting components of the TcHmi framework, some tips and tricks to make life easier, and explore third-party tools that can enhance the developer experience.
 
-Open up a fresh empty TwinCAT HMI project. No need to run through the Project Generator.
+Clone this repository, open the solution and add a fresh empty TwinCAT HMI project. No need to run through the Project Generator.
+
+<a id="server_requests"></a>
+
+### 2. Server Requests
+
+There is some pretty comprehensive server documentation available for TwinCAT HMI. This was previously (1.12) installed with the engineering installation in the `C:\TwinCAT\Functions` directory, but it now (1.14) must be manually added via `tcpkg`.
+- Open PowerShell terminal as administrator
+- `tcpkg install TwinCAT.HMI.Server.Documentation`
+
+Navigate here: 
+```
+C:\Program Files (x86)\Beckhoff\TwinCAT\Functions\TF2000-HMI-Server\Documentation\html
+```
+and run the `README.html` file.
+
+Almost everything that can be accomplished from the configuration pages can also be programmatically configured via web socket requests. This documentation provides details and examples for each extension.
+
+> Given that these are just basic web socket requests, the functions can be executed totally *outside* the front-end TcHmi framework. A custom client-side web application can leverage the powerful backend features of TwinCAT HMI server (e.g. connection and request pooling, ADS server, historizer, etc.) via a common open interface.
+
+For instance, can programmatically map a PLC symbol via this interface with `TcHmiSrv.AddSymbol`. Or even better, we can map *all* the Automap symbols in a PLC project with one call to `TcHmi.AddSymbols`. Add the following JS action to a button
+```js
+TcHmi.Server.writeSymbol(
+    'AddSymbols',
+    { 
+        "domain": "ADS" 
+    },
+    data => { /* do nothing */ }
+);
+```
 
 <a id="wtf"></a>
 
@@ -83,7 +111,9 @@ Right-click on **Server** under the project name, and select both "Toggle Advanc
 - TcHmiSrv -> Advanced -> Symbol complexity limit
 
 ---
-#### Symbol escaping
+#### TcHmi.Log
+
+
 
 ---
 #### Server symbols
@@ -93,21 +123,3 @@ Internal symbols are a great feature for storing data of any type or size in mem
 Luckily, we can create and use server symbols just like we do with internal symbols. The only difference is that they will live in the server's memory and be accessible from all clients.
 
 In the HMI configuration page, right-click "Mapped Symbols" and "create new server symbol". You can select any type, default value, and even mark the symbol as persistent. Upon creation, you can view or edit your symbol in the `TcHmiSrv` domain.
-
-<a id="server_requests"></a>
-
-### 7. Server Requests
-
-There is some pretty comprehensive server documentation available for TwinCAT HMI. This was previously (1.12) installed with the engineering installation in the `C:\TwinCAT\Functions` directory, but it now (1.14) must be manually added via `tcpkg`.
-- Open PowerShell terminal as administrator
-- `tcpkg install TwinCAT.HMI.Server.Documentation`
-
-Navigate here: 
-```
-C:\Program Files (x86)\Beckhoff\TwinCAT\Functions\TF2000-HMI-Server\Documentation\html
-```
-and run the `README.html` file.
-
-Almost everything that can be accomplished from the configuration pages can also be programmatically configured via web socket requests. This documentation provides details and examples for each extension.
-
-> Given that these are just basic web socket requests, the functions can be executed totally *outside* the front-end TcHmi framework. A custom client-side web application can leverage the powerful backend features of TwinCAT HMI server (e.g. connection and request pooling, ADS server, historizer, etc.) via a common open interface.
