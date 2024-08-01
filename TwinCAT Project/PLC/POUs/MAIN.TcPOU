@@ -6,14 +6,17 @@ VAR
 	{ attribute 'TcHmiSymbol.AddSymbol' }
 	nCtx			: DINT;
 	
-	{ attribute 'My.Custom.Attribute' }
+	{ attribute 'My.Custom.Attribute' := 'Attribute value' }
 	{ attribute 'TcHmiSymbol.AddSymbol' }
 	nAttribute		: DINT;
-	
+	ton				: TON;
 END_VAR
 ]]></Declaration>
     <Implementation>
-      <ST><![CDATA[]]></ST>
+      <ST><![CDATA[ton(IN:=NOT ton.Q, PT:=T#5S);
+IF ton.Q THEN
+	nAttribute := nAttribute + 1;
+END_IF]]></ST>
     </Implementation>
   </POU>
 </TcPlcObject>

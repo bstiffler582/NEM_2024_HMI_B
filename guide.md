@@ -3,7 +3,8 @@
 ### Contents
 1. [Intro | Setup](#setup)
 2. [Server Requests](#server_requests)
-7. [WTF is that?](#wtf)
+3. [Framework Control](#fwcontrol)
+4. [WTF is that?](#wtf)
 
 <a id="setup"></a>
 
@@ -29,18 +30,67 @@ and run the `README.html` file.
 
 Almost everything that can be accomplished from the configuration pages can also be programmatically configured via web socket requests. This documentation provides details and examples for each extension.
 
-> Given that these are just basic web socket requests, the functions can be executed totally *outside* the front-end TcHmi framework. A custom client-side web application can leverage the powerful backend features of TwinCAT HMI server (e.g. connection and request pooling, ADS server, historizer, etc.) via a common open interface.
+For instance, can programmatically map a PLC symbol via this interface with `TcHmiSrv.AddSymbol`. Or even better, we can map *all* the Auto-map symbols in a PLC project with one call to `TcHmiSrv.AddSymbols`. 
 
-For instance, can programmatically map a PLC symbol via this interface with `TcHmiSrv.AddSymbol`. Or even better, we can map *all* the Automap symbols in a PLC project with one call to `TcHmi.AddSymbols`. Add the following JS action to a button
+> Given that these are just basic web socket requests, the functions can be executed totally *outside* the front-end TcHmi framework. A custom client-side web application can leverage the powerful backend features of TwinCAT HMI server (e.g. connection and request pooling, ADS server, historizer, etc.) via a common, open interface.
+
+#### Exercise: Server requests
+
+Make sure the PLC project is running. It has some symbols with the `{ attribute TcHmiSymbol.AddSymbol }` pragma. Modify the `TcHmiSrv.AddSymbols` sample request to target our development server at `ws://localhost:3000/`, and send it. It will identify and return all the auto-map symbols. They should now show up as Mapped symbols in your HMI project.
+
+Create a new CodeBehind file, and remove the function/namespace wrapper that is auto-generated. Add the following code:
 ```js
-TcHmi.Server.writeSymbol(
-    'AddSymbols',
-    { 
-        "domain": "ADS" 
+const ws = new WebSocket('ws://localhost:3000/');
+
+ws.onopen = () => {
+    const message = {
+        commands: [
+            {
+                commandOptions: [],
+                symbol: "ADS.PLC1.MAIN.nAttribute"
+            }
+        ],
+        requestType: "Subscription",
+        intervalTime: 1000
+    };
+    ws.send(JSON.stringify(message));
+};
+
+ws.onmessage = (message) => {
+    if (message.data) {
+        const data = JSON.parse(message.data);
+        if (data.commands.length) {
+            console.log(data);
+        }
+    }
+};
+```
+We have mapped a symbol and subscribed to read its value on change, all without using any `TcHmi` calls. This is part of how the framework is interacting with the server behind the scenes. We can use the framework's wrapper functions to the same effect. Going back to the docs, copy the JavaScript sample request from the `TcHmiSrv.GetSchema` page. Then finesse it to point to one of our mapped symbols, and put it in a button action:
+```js
+TcHmi.Server.writeSymbol('GetSchema',
+    {
+        "symbol": "ADS.PLC1.MAIN.nAttribute"
     },
-    data => { /* do nothing */ }
+    data => {
+        if (data.error !== TcHmi.Errors.NONE ||
+            data.response.error ||
+            data.response.commands[0].error) {
+            // Handle error(s)...
+            return;
+        }
+        // Handle result...
+        console.log(data.response.commands[0].readValue);
+    }
 );
 ```
+The `GetSchema` request returns some useful meta data about our symbol, like its type and even custom pragmas we may have applied in the PLC program. Customers can leverage this type of information to automate a lot of their HMI development.
+
+If we open the network tab in our browser, refresh the page and filter for websocket traffic, we can click on the active connection (`127.0.0.1`) and see the message come in with a similar format to the message we manually created in the previous step.
+
+
+<a id="fwcontrol"></a>
+
+### 3. Framework Control
 
 <a id="wtf"></a>
 
