@@ -3,11 +3,11 @@
   <POU Name="MAIN" Id="{28507b62-cd61-4eba-97c0-4dd3a4048b0c}" SpecialFunc="None">
     <Declaration><![CDATA[PROGRAM MAIN
 VAR
-	{ attribute: 'TcHmiSymbol.AddSymbol' }
+	{ attribute 'TcHmiSymbol.AddSymbol' }
 	nCtx			: DINT;
 	
-	{ attribute: 'My.Custom.Attribute' }
-	{ attribute: 'TcHmiSymbol.AddSymbol' }
+	{ attribute 'My.Custom.Attribute' }
+	{ attribute 'TcHmiSymbol.AddSymbol' }
 	nAttribute		: DINT;
 	
 END_VAR
