@@ -4,7 +4,8 @@
 1. [Intro | Setup](#setup)
 2. [Server Requests](#server_requests)
 3. [Framework Control](#fwcontrol)
-4. [WTF is that?](#wtf)
+4. [Automated Testing](#testing)
+5. [WTF is that?](#wtf)
 
 <a id="setup"></a>
 
@@ -92,9 +93,70 @@ If we open the network tab in our browser, refresh the page and filter for webso
 
 ### 3. Framework Control
 
+The TwinCAT HMI control architecture allows for near limitless extensibility. Leveraging open web technologies, we can write our own HTML, CSS and JavaScript/TypeScript and seamlessly integrate it with our project. We can even import third party libraries to leverage open source or community driven resources.
+
+#### Exercise: Add a framework control and some third party references
+
+Create a new "TwinCAT HMI Framework" project in your solution. A framework project can contain one or more custom controls. We are going to add a reference to the **BabylonJs** library, which is an open source JavaScript 3D rendering engine built and maintained by Microsoft.
+
+An option for adding this reference would be to use the node package manager:
+```ps
+npm install @babylonjs/core @babylonjs/loaders
+```
+**but**, this would give us the full source, un-"minified" and with type definitions. This is especially useful for development and debugging, however the full source takes up a lot of extra space. Since we intend to compile and distribute our framework project (via nuget packages), we will want to keep dependencies to a minimum. We can simply create a 'Lib' folder in our control directory and copy in the minified versions of the Babylon dependencies from this repository.
+
+Once the dependency files are added into our Framework project, we will want to make sure to reference them in the control's `Description.json` file:
+```json
+"dependencyFiles": [
+  //...
+  {
+    "name": "Lib/babylon.js",
+    "type": "JavaScript",
+    "description": "BabylonJs"
+  }
+]
+```
+> If we were creating a TypeScript control, we would add the dependency in the TypeScript config file as well (`tsconfig.tpl.json`)
+>```json
+>"include": [
+>    "$(Beckhoff.TwinCAT.HMI.Framework).InstallPath/TcHmi.d.ts",
+>    "./Path/to/dependency/TypeScript_Declaration_File.d.ts"
+>]
+>```
+
+Now to implement the library:
+1. Modify the `Template.html` file to include a canvas element with a unique identifier
+```html
+<canvas></canvas>
+```
+2. In the control's JS file, we first need to grab a reference to the `<canvas>` element in the `__previnit()` method:
+```js
+```
+3. Initialization logic, etc.
+
+Load model file and render. Dynamic camera / view maybe?
+
+<a id="testing"></a>
+
+### 4. Automated Testing
+
+```ps
+npm install jest
+```
+```json
+{
+  "devDependencies": {
+    "jest": "^29.7.0"
+  },
+  "scripts": {
+    "test": "jest"
+  }
+}
+```
+
 <a id="wtf"></a>
 
-### 2. WTF is that?
+### 5. WTF is that?
 
 What does that do? TwinCAT HMI has a lot of interesting and seldom-used features that may be hard to find or understand. Let's dig into a few of them just in case they become useful for your future applications.
 

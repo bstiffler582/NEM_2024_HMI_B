@@ -24,6 +24,7 @@ _CompileInfo/
 _Libraries/
 _ModuleInstall/
 TcHmiProject/
+FrameworkPrj/
 Packages/
 # TwinCAT HMI, filter downloaded JSON schema files
 json-schema.org
