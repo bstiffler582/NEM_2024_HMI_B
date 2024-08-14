@@ -108,16 +108,16 @@ npm install @babylonjs/core @babylonjs/loaders
 Once the dependency files are added into our Framework project, we will want to make sure to reference them in the control's `Description.json` file:
 ```json
 "dependencyFiles": [
-  //...
+  ...
   {
     "name": "Lib/babylon.js",
     "type": "JavaScript",
     "description": "BabylonJs"
   },
   {
-  "name": "Lib/babylonjs.loaders.min.js",
-  "type": "JavaScript",
-  "description": "BabylonJs loaders"
+    "name": "Lib/babylonjs.loaders.min.js",
+    "type": "JavaScript",
+    "description": "BabylonJs loaders"
   }
 ]
 ```
@@ -386,7 +386,8 @@ getMeshList() {
 }
 
 setMeshList(value) {
-    this.__meshList = value;
+    if (value)
+        this.__meshList = value;
 }
 ```
 - And finally, in the `constructor`, another field to hold the mesh list data:
@@ -445,19 +446,55 @@ Test the control by adding meshes to the Mesh List property, including the GLB f
 
 ### 4. Automated Testing
 
+We can leverage automated testing tools like [Jest](https://jestjs.io/) right within the TwinCAT HMI development environment. By default, we do not have access to the `TcHmi` framework from the test environment, so practical implementations would be reserved for business logic and helper functions. 
+- Within the Framework project, create a new folder `Modules` and add a new JS file `Helpers.js`. Add the following code to `Helpers`:
+```js
+class Helpers {
+    TestableMethod(a, b) {
+        return a + b;
+    }
+}
+
+// export for testing
+try {
+    if (process.env.NODE_ENV === 'test') {
+        module.exports = Helpers;
+    }
+} catch (e) {
+    // do nothing
+}
+```
+- Now, add a test JS file to the same folder; `Helpers.test.js`:
+```js
+const Helpers = require('./Helpers');
+const helpers = new Helpers();
+
+test("Helper method", () => {
+    expect(helpers.TestableMethod(1, 1)).toBe(2);
+});
+```
+- To run the test, we must install Jest via the node package manager. Open a developer console (``` Ctrl + ` ```), make sure we are in the framework control's directory, and run the following command:
 ```ps
 npm install jest
 ```
+> The TwinCAT HMI's TypeScript build process relies on `node`, so any machine with TE2000 will already have `node` / `npm` installed and ready to use.
+
+Adding any package via npm will create a `package.json` file in the installation root. 
+- Add the `"scripts"` entry below to `packages.json` to tell npm to forward the `test` command to Jest:
 ```json
 {
   "devDependencies": {
-    "jest": "^29.7.0"
+    ...
   },
   "scripts": {
     "test": "jest"
   }
 }
 ```
+- Finally, in the same developer console execute `npm test` to run the tests and see the results.
+
+Furthermore, we can open the properties of our framework project and add the `npm test` command as a pre- or post-build event.
+> The challenge with implementing popular test frameworks like Jest is that `TcHmi` does not use JavaScript *modules*, and instead relies on classes and prototypal inheritance. We intend to increase support for modules in future versions for TwinCAT HMI, which may expand testing capabilities.
 
 <a id="wtf"></a>
 
