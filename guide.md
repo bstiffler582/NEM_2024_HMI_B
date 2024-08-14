@@ -86,8 +86,7 @@ TcHmi.Server.writeSymbol('GetSchema',
 ```
 The `GetSchema` request returns some useful meta data about our symbol, like its type and even custom pragmas we may have applied in the PLC program. Customers can leverage this type of information to automate a lot of their HMI development.
 
-If we open the network tab in our browser, refresh the page and filter for websocket traffic, we can click on the active connection (`127.0.0.1`) and see the message come in with a similar format to the message we manually created in the previous step.
-
+If we open the network tab in our browser, refresh the page and filter for websocket traffic, we can click on the active connection (`127.0.0.1`) and see the websocket messages come in with a similar format to the message we manually created in the previous step. If we create a binding (e.g. TextBox control Text property to a PLC symbol), we can observe the framework creating its own "Subscription" request to poll the value.
 
 <a id="fwcontrol"></a>
 
