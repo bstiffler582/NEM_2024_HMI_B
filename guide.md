@@ -113,6 +113,11 @@ Once the dependency files are added into our Framework project, we will want to 
     "name": "Lib/babylon.js",
     "type": "JavaScript",
     "description": "BabylonJs"
+  },
+  {
+  "name": "Lib/babylonjs.loaders.min.js",
+  "type": "JavaScript",
+  "description": "BabylonJs loaders"
   }
 ]
 ```
@@ -125,16 +130,316 @@ Once the dependency files are added into our Framework project, we will want to 
 >```
 
 Now to implement the library:
-1. Modify the `Template.html` file to include a canvas element with a unique identifier
+- Modify the `Template.html` file to include a canvas element with a unique identifier
 ```html
-<canvas></canvas>
+<canvas class="babylon" style="width: 100%; height: 100%"></canvas>
 ```
-2. In the control's JS file, we first need to grab a reference to the `<canvas>` element in the `__previnit()` method:
-```js
-```
-3. Initialization logic, etc.
 
-Load model file and render. Dynamic camera / view maybe?
+- In the control's JS file, we first need to grab a reference to the `<canvas>` element, then we can initialize the Babylon engine. Put this in the `__previnit()` method, before calling the base:
+```js
+this.__elementCanvas = this.__elementTemplateRoot.find('.babylon').get(0);
+if (this.__elementCanvas) {
+    this.__engine = new BABYLON.Engine(this.__elementCanvas, true);
+}
+```
+Let's take a moment to declare some of these fields we are using. In a JS framework control, we do this in the `constructor` method:
+```js
+constructor(element, pcElement, attrs) {
+    /** Call base class constructor */
+    super(element, pcElement, attrs);
+
+    // internal fields
+    this.__engine = null;
+    this.__scene = null;
+}
+```
+
+- The next step is just some initialization logic to render the scene. We will create a new method to handle this. Put it underneath the `destroy()` method (same nesting level), and then call it from `__init()`.
+```js
+__createScene() {
+    if (this.__engine) {
+        // init scene
+        const scene = new BABYLON.Scene(this.__engine);
+
+        // camera and lighting
+        scene.createDefaultCameraOrLight(true, true, true);
+
+        // axis viewer
+        new BABYLON.Debug.AxesViewer(scene, 0.25);
+
+        // render loop
+        this.__engine.runRenderLoop(function () {
+            scene.render();
+        });
+
+        this.__scene = scene;
+    }
+}
+```
+```js
+__init() {
+    this.__createScene();
+    super.__init();
+}
+```
+
+- Build your Framework Control project, then add it as a project reference to the main HMI project. Once refreshed, we should be able to drop an instance of our new control on the view, just like we would any other control. You should have a 3D engine on your page, with visible X/Y/Z axes and typical mouse rotate/zoom/pan controls. You might notice that the rendering looks a little blurry. This is because the engine does not know the size of its parent `<canvas>` element. We can tell the engine to resize once the element has been *attached* to the DOM:
+```js
+__attach() {
+    this.__engine?.resize();
+    super.__attach();
+}
+```
+That should look much better.
+> **What** goes *where*?? How do we know where to put each piece of logic in the control's template? We have `previnit()`, `init()`, `attach()`, `detach()`... Each method has useful comments above to give you and idea of how the control lifecycle works, but it is still not always easy to figure out where things go. Sometimes you have to get it wrong a couple times.
+
+Now we are ready to start rendering some objects. The naive approach might be to manually import a model or statically define some shapes right in the body of our control. A better, more modular approach would be to have simple properties that allow the end user of our control to define their 3D objects. You might be wondering where to even start with this type of task, but we have a ton of reference material in the existing controls.
+
+- Drop in an EventGrid control and take a look at the **Columns** property. Notice that we can specify multiple elements, each having their own unique property values. In this case, we can also specify different *types* of elements to be processed by the control in the same collection. A similar interface for our custom control would be ideal.
+
+The type of this property is `TcHmi.Controls.Beckhoff.TcHmiEventGrid.ColumnList`. We can look in the EventGrid's Types.Schema.json file in the Schema directory to see the definition: 
+`[buildOutput]\BeckhoffTwinCAT.HMI.Controls\TcHmiEventGrid\Schema`
+```json
+"TcHmi.Controls.Beckhoff.TcHmiEventGrid.ColumnList": {
+    "title": "ColumnList",
+    "type": "array",
+    "items": {
+        "anyOf": [
+            {
+...
+```
+
+Our own property will look similar. In Babylon, a 3D object either imported or drawn is typically called a "Mesh", so we will call our collection "MeshList". 
+- In our own control's Types.Schema file, paste the following under **definitions**:
+```json
+"TcHmi.Controls.<ProjectName>.<ControlName>.MeshList": {
+  "title": "MeshList",
+  "type": "array",
+  "items": {
+    "anyOf": [
+      {
+        "title": "Import",
+        "type": "object",
+        "engineeringColumns": [ "meshName" ],
+        "propertiesMeta": [
+          {
+            "name": "meshName",
+            "displayName": "Mesh Name",
+            "category": "General",
+            "description": "Name of mesh",
+            "defaultValue": "Mesh",
+            "defaultValueInternal": null
+          },
+          {
+            "name": "path",
+            "displayName": "Path",
+            "category": "General",
+            "description": "Path to mesh file",
+            "defaultValue": null,
+            "defaultValueInternal": null
+          },
+          {
+            "name": "position",
+            "displayName": "Position",
+            "category": "General",
+            "description": "Mesh position offsets",
+            "defaultValue": null,
+            "defaultValueInternal": null
+          }
+        ],
+        "properties": {
+          "meshName": {
+            "type": "string"
+          },
+          "path": {
+            "$ref": "tchmi:framework#/definitions/Path"
+          },
+          "position": {
+            "$ref": "tchmi:framework#/definitions/TcHmi.Controls.<ProjectName>.<ControlName>.MeshPosition"
+          }
+        },
+        "additionalProperties": false,
+        "required": [ "meshName", "path" ]
+      },
+      {
+        "title": "Shape",
+        "type": "object",
+        "engineeringColumns": [ "meshName" ],
+        "propertiesMeta": [
+          {
+            "name": "meshName",
+            "displayName": "Mesh Name",
+            "category": "General",
+            "description": "Name of mesh",
+            "defaultValue": "Shape",
+            "defaultValueInternal": null
+          },
+          {
+            "name": "shapeType",
+            "displayName": "Type",
+            "category": "General",
+            "description": "Type of shape mesh",
+            "defaultValue": "box",
+            "defaultValueInternal": null
+          },
+          {
+            "name": "position",
+            "displayName": "Position",
+            "category": "General",
+            "description": "Mesh position offsets",
+            "defaultValue": null,
+            "defaultValueInternal": null
+          }
+        ],
+        "properties": {
+          "meshName": {
+            "type": "string"
+          },
+          "shapeType": {
+            "type": "string",
+            "enum": [
+              "box",
+              "sphere",
+              "cylinder"
+            ]
+          },
+          "position": {
+            "$ref": "tchmi:framework#/definitions/TcHmi.Controls.<ProjectName>.<ControlName>.MeshPosition"
+          }
+        },
+        "additionalProperties": false,
+        "required": [ "meshName", "shapeType" ]
+      }
+    ]
+  }
+}
+```
+Notice we are also referencing another type definition for the "position" property. We define that here as well:
+```json
+"TcHmi.Controls.<ProjectName>.<ControlName>.MeshPosition": {
+  "title": "MeshPosition",
+  "type": "object",
+  "propertiesMeta": [
+    {
+      "name": "x",
+      "displayName": "X",
+      "description": "X position offset",
+      "defaultValue": 0,
+      "defaultValueInternal": 0
+    },
+    {
+      "name": "y",
+      "displayName": "Y",
+      "description": "Y position offset",
+      "defaultValue": 0,
+      "defaultValueInternal": 0
+    },
+    {
+      "name": "z",
+      "displayName": "Z",
+      "description": "Z position offset",
+      "defaultValue": 0,
+      "defaultValueInternal": 0
+    }
+  ],
+  "properties": {
+    "x": {
+      "type": "number"
+    },
+    "y": {
+      "type": "number"
+    },
+    "z": {
+      "type": "number"
+    }
+  }
+}
+```
+This will allow us to offset the position of the mesh rendering. Anything we define in this file will be added to the referencing project's framework definitions. You can view it in the project configuration under "Data Types".
+
+>Imagine how we can also supply rotation and scaling properties to fully customize the behavior of the model. We can also go as far as to make these properties bindable so that meshes can respond to input and animate in real time.
+
+Next, we create a new attribute in our control's `Description.json` file. This is where we specify control properties that can be assigned or bound in the editor.
+- Create "Mesh List" property for the control:
+```json
+"attributes": [
+  {
+    "name": "data-tchmi-mesh-list",
+    "displayName": "Mesh List",
+    "type": "tchmi:framework#/definitions/TcHmi.Controls.<ProjectName>.<ControlName>.MeshList",
+    "propertyGetterName": "getMeshList",
+    "propertySetterName": "setMeshList",
+    "propertyName": "meshList",
+    "bindable": false,
+    "category": "Common",
+    "defaultValue": null,
+    "defaultValueInternal": null,
+    "description": "List of meshes"
+  }
+]
+```
+In the control's JS file, we need to add the getter and setter methods specified above. These are the entry points for reading and writing the property value. 
+- Add below our `__createScene()` method:
+```js
+getMeshList() {
+    return this.__meshList;
+}
+
+setMeshList(value) {
+    this.__meshList = value;
+}
+```
+- And finally, in the `constructor`, another field to hold the mesh list data:
+```js
+this.__meshList = [];
+```
+Upon a build, we are now able to select our control in the designer and specify a mesh list. We have a handy interface for providing the name, path or shape (based on mesh type), and position offsets.
+
+We are almost ready to render. Included in this repository is a GLB model file we can test with. Extract the `model.zip` file and bring it into the `Imports` folder in the HMI project via "Add -> Existing Item...". Lastly, we just need the Babylon code to import the model and apply the offsets.
+- Add the following `renderMeshes()` method (below `__createScene()`):
+```js
+__renderMeshes(meshes) {
+
+    meshes.forEach(async mesh => {
+        let m;
+        if (mesh.path) {
+            // import
+            const imported = await BABYLON.SceneLoader.ImportMeshAsync(null, mesh.path);
+            m = imported.meshes[0];
+        } else if (mesh.shapeType) {
+            // draw shape
+            switch (mesh.shapeType) {
+                case 'box':
+                    m = BABYLON.MeshBuilder.CreateBox(mesh.meshName);
+                    break;
+                case 'sphere':
+                    m = BABYLON.MeshBuilder.CreateSphere(mesh.meshName);
+                    break;
+                case 'cylinder':
+                    m = BABYLON.MeshBuilder.CreateCylinder(mesh.meshName);
+                    break;
+            }
+        }
+        // apply position offsets
+        if (m && mesh.position) {
+            m.position.x = mesh.position.x;
+            m.position.y = mesh.position.y;
+            m.position.z = mesh.position.z;
+        }
+    });
+}
+```
+And call it from within `__createScene()`, just above the render loop:
+```js
+...
+// render mesh list
+if (this.__meshList.length) {
+    this.__renderMeshes(this.__meshList);
+}
+// render loop
+...
+```
+Test the control by adding meshes to the Mesh List property, including the GLB file and some shapes. Think about how you might further extend the type schema, properties, methods and control to facilitate even more functionality.
 
 <a id="testing"></a>
 
@@ -221,11 +526,6 @@ Right-click on **Server** under the project name, and select both "Toggle Advanc
 - TcHmiUserManagement -> Password aging, complexity
 - ADS -> Limit ADS response size; for `Sum ADS read request failed` errors
 - TcHmiSrv -> Advanced -> Symbol complexity limit
-
----
-#### TcHmi.Log
-
-
 
 ---
 #### Server symbols
