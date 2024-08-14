@@ -4,8 +4,8 @@
 1. [Intro | Setup](#setup)
 2. [Server Requests](#server_requests)
 3. [Framework Control](#fwcontrol)
-4. [Automated Testing](#testing)
-5. [WTF is that?](#wtf)
+4. [WTF is that?](#wtf)
+5. [Automated Testing](#testing)
 
 <a id="setup"></a>
 
@@ -102,19 +102,19 @@ An option for adding this reference would be to use the node package manager:
 ```ps
 npm install @babylonjs/core @babylonjs/loaders
 ```
-**but**, this would give us the full source, un-"minified" and with type definitions. This is especially useful for development and debugging, however the full source takes up a lot of extra space. Since we intend to compile and distribute our framework project (via nuget packages), we will want to keep dependencies to a minimum. We can simply create a 'Lib' folder in our control directory and copy in the minified versions of the Babylon dependencies from this repository.
+**but**, this would give us the full source, un-"minified" and with type definitions. This is especially useful for development and debugging, however the full source takes up a lot of extra space. Since we intend to compile and distribute our framework project (via nuget packages), we will want to keep dependencies to a minimum. We can simply create a 'Lib' folder in our framework project directory and copy in the minified versions of the Babylon dependencies from this repository.
 
 Once the dependency files are added into our Framework project, we will want to make sure to reference them in the control's `Description.json` file:
 ```json
 "dependencyFiles": [
   ...
   {
-    "name": "Lib/babylon.js",
+    "name": "../Lib/babylon.js",
     "type": "JavaScript",
     "description": "BabylonJs"
   },
   {
-    "name": "Lib/babylonjs.loaders.min.js",
+    "name": "../Lib/babylonjs.loaders.min.js",
     "type": "JavaScript",
     "description": "BabylonJs loaders"
   }
@@ -190,7 +190,7 @@ __attach() {
 }
 ```
 That should look much better.
-> **What** goes *where*?? How do we know where to put each piece of logic in the control's template? We have `previnit()`, `init()`, `attach()`, `detach()`... Each method has useful comments above to give you and idea of how the control lifecycle works, but it is still not always easy to figure out where things go. Sometimes you have to get it wrong a couple times.
+> **What** goes *where*?? How do we know where to put each piece of logic in the control's template? We have `previnit()`, `init()`, `attach()`, `detach()`... Each method has useful comments above to give you and idea of how the control lifecycle works, and there is also good documentation on [infosys](https://infosys.beckhoff.com/english.php?content=../content/1033/te2000_tc3_hmi_engineering/5004292747.html&id=9218520696118602432).
 
 Now we are ready to start rendering some objects. The naive approach might be to manually import a model or statically define some shapes right in the body of our control. A better, more modular approach would be to have simple properties that allow the end user of our control to define their 3D objects. You might be wondering where to even start with this type of task, but we have a ton of reference material in the existing controls.
 
@@ -441,63 +441,9 @@ if (this.__meshList.length) {
 ```
 Test the control by adding meshes to the Mesh List property, including the GLB file and some shapes. Think about how you might further extend the type schema, properties, methods and control to facilitate even more functionality.
 
-<a id="testing"></a>
-
-### 4. Automated Testing
-
-We can leverage automated testing tools like [Jest](https://jestjs.io/) right within the TwinCAT HMI development environment. By default, we do not have access to the `TcHmi` framework from the test environment, so practical implementations would be reserved for business logic and helper functions. 
-- Within the Framework project, create a new folder `Modules` and add a new JS file `Helpers.js`. Add the following code to `Helpers`:
-```js
-class Helpers {
-    TestableMethod(a, b) {
-        return a + b;
-    }
-}
-
-// export for testing
-try {
-    if (process.env.NODE_ENV === 'test') {
-        module.exports = Helpers;
-    }
-} catch (e) {
-    // do nothing
-}
-```
-- Now, add a test JS file to the same folder; `Helpers.test.js`:
-```js
-const Helpers = require('./Helpers');
-const helpers = new Helpers();
-
-test("Helper method", () => {
-    expect(helpers.TestableMethod(1, 1)).toBe(2);
-});
-```
-- To run the test, we must install Jest via the node package manager. Open a developer console (``` Ctrl + ` ```), make sure we are in the framework control's directory, and run the following command:
-```ps
-npm install jest
-```
-> The TwinCAT HMI's TypeScript build process relies on `node`, so any machine with TE2000 will already have `node` / `npm` installed and ready to use.
-
-Adding any package via npm will create a `package.json` file in the installation root. 
-- Add the `"scripts"` entry below to `packages.json` to tell npm to forward the `test` command to Jest:
-```json
-{
-  "devDependencies": {
-    ...
-  },
-  "scripts": {
-    "test": "jest"
-  }
-}
-```
-- Finally, in the same developer console execute `npm test` to run the tests and see the results.
-
-Furthermore, we can open the properties of our framework project and add the `npm test` command as a pre- or post-build event.
-> The challenge with implementing popular test frameworks like Jest is that `TcHmi` does not use JavaScript *modules*, and instead relies on classes and prototypal inheritance. We intend to increase support for modules in future versions for TwinCAT HMI, which may expand testing capabilities.
-
 <a id="wtf"></a>
 
-### 5. WTF is that?
+### 4. WTF is that?
 
 What does that do? TwinCAT HMI has a lot of interesting and seldom-used features that may be hard to find or understand. Let's dig into a few of them just in case they become useful for your future applications.
 
@@ -553,15 +499,28 @@ Per the Mozilla JavaScript developer docs:
     - Notice that you can add as many parameters as you want
     - Pass in a few parameters, call the function and check the console
 
-If you used a TypeScript function, you should have good results. If you created a JavaScript function, there may be more work to do. Rest parameters rely on the spread operator (`...`), which is not automatically applied to the argument.
+What is the result? Rest parameters rely on the spread operator (`...`) in the function declaration. Currently, the development environment does not automatically append this, so we need to do it manually:
+```js
+//...
+MyFunction(...par1) {
+  console.log(par1);
+}
+```
+Now the log should show all the parameter values.
 
 ---
 #### Buried Configs
 
 Right-click on **Server** under the project name, and select both "Toggle Advanced" and "Toggle Advanced Settings". You will notice some additional extensions you can configure, as well as additional options within each extension. Some common ones:
-- TcHmiUserManagement -> Password aging, complexity
-- ADS -> Limit ADS response size; for `Sum ADS read request failed` errors
-- TcHmiSrv -> Advanced -> Symbol complexity limit
+- ADS
+  - Limit ADS response size (for `Sum ADS read request failed` errors)
+- TcHmiSrv -> Advanced
+  - Symbol complexity limit
+  - Maximum number of connections
+  - Maximum connections per client
+- TcHmiUserManagement
+  - Password aging
+  - Password complexity
 
 ---
 #### Server symbols
@@ -571,3 +530,57 @@ Internal symbols are a great feature for storing data of any type or size in mem
 Luckily, we can create and use server symbols just like we do with internal symbols. The only difference is that they will live in the server's memory and be accessible from all clients.
 
 In the HMI configuration page, right-click "Mapped Symbols" and "create new server symbol". You can select any type, default value, and even mark the symbol as persistent. Upon creation, you can view or edit your symbol in the `TcHmiSrv` domain.
+
+<a id="testing"></a>
+
+### 5. Automated Testing
+
+We can leverage automated testing tools like [Jest](https://jestjs.io/) right within the TwinCAT HMI development environment. By default, we do not have access to the `TcHmi` framework from the test environment, so practical implementations would be reserved for business logic and helper functions. 
+- Within the Framework project, create a new folder `Modules` and add a new JS file `Helpers.js`. Add the following code to `Helpers`:
+```js
+class Helpers {
+    TestableMethod(a, b) {
+        return a + b;
+    }
+}
+
+// export for testing
+try {
+    if (process.env.NODE_ENV === 'test') {
+        module.exports = Helpers;
+    }
+} catch (e) {
+    // do nothing
+}
+```
+- Now, add a test JS file to the same folder; `Helpers.test.js`:
+```js
+const Helpers = require('./Helpers');
+const helpers = new Helpers();
+
+test("Helper method", () => {
+    expect(helpers.TestableMethod(1, 1)).toBe(2);
+});
+```
+- To run the test, we must install Jest via the node package manager. Open a developer console (``` Ctrl + ` ```), make sure we are in the framework control's directory, and run the following command:
+```ps
+npm install jest
+```
+> The TwinCAT HMI's TypeScript build process relies on `node`, so any machine with TE2000 will already have `node` / `npm` installed and ready to use.
+
+Adding any package via npm will create a `package.json` file in the installation root. 
+- Add the `"scripts"` entry below to `packages.json` to tell npm to forward the `test` command to Jest:
+```json
+{
+  "devDependencies": {
+    ...
+  },
+  "scripts": {
+    "test": "jest"
+  }
+}
+```
+- Finally, in the same developer console execute `npm test` to run the tests and see the results.
+
+Furthermore, we can open the properties of our framework project and add the `npm test` command as a pre- or post-build event.
+> The challenge with implementing popular test frameworks like Jest is that `TcHmi` does not use JavaScript *modules*, and instead relies on classes and prototypal inheritance. We intend to increase support for modules in future versions for TwinCAT HMI, which may expand testing capabilities.
