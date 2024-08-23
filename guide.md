@@ -66,7 +66,7 @@ ws.onmessage = (message) => {
     }
 };
 ```
-> We have the option of adding "JavaScript", "CodeBehind" or "Function (JavaScript)" files; are being different ways of adding a JavaScript file to the project. CodeBehind and Function files will drop in with template code and metadata to insure that the logic is appropriately registered with the `TcHmi` framework. For this example, we are working outside the scope of the framework, so a blank JavaScript file is appropriate.
+> We have the option of adding "JavaScript", "CodeBehind" or "Function (JavaScript)" files; all being different ways of adding a *.js file to the project. CodeBehind and Function files will drop in with template code and metadata to insure that our logic is appropriately registered with the `TcHmi` framework. For this example, we are working outside the scope of the framework, so a blank JavaScript file is sufficient. The file will still be referenced by the page via a `<script>` element in the markup, so any code we add will be evaluated.
 
 We have mapped a symbol and subscribed to read its value on change, all without using any `TcHmi` calls. This is part of how the framework is interacting with the server behind the scenes. We can use the framework's wrapper functions to the same effect. Going back to the docs, copy the JavaScript sample request from the `TcHmiSrv.GetSchema` page. Then finesse it to point to one of our mapped symbols, and put it within a Button action:
 ```js
