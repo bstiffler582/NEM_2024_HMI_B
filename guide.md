@@ -441,6 +441,16 @@ if (this.__meshList.length) {
 ```
 Test the control by adding meshes to the Mesh List property, including the GLB file and some shapes. Think about how you might further extend the type schema, properties, methods and control to facilitate even more functionality.
 
+Lastly, you may have also noticed that the 3D model is being loaded in the designer. It is helpful to understand that the Framework Control is running through its lifecycle methods within the designer view, just as it would in LiveView or on the published page. We have the ability to inhibit this if necessary. Revise the `__init()` method:
+```js
+__init() {
+    if (!TCHMI_ENABLE_DESIGNER_MODE_MASTER) {
+        this.__createScene();   
+    }
+    super.__init();
+}
+```
+
 <a id="wtf"></a>
 
 ### 4. WTF is that?
